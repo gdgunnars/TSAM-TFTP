@@ -1,10 +1,12 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <errno.h>
 
 // argv[0] =  program name
 // argv[1] = port number
@@ -17,13 +19,13 @@ int main(int argc, char **argv)
 	// Check if number of arguments are correct
 	if(argc != 3) {
 		fprintf(stderr, "Usage: %s <port> <directory>\n", argv[0]);
-		exit(-1);
+		return -1;
 	}
 	
 	// Check if valid directory
 	if (stat(argv[2], &s) == -1 || !(s.st_mode & S_IFDIR)) {
 		fprintf(stderr, "No such directory: %s\n", argv[2]);
-		exit(-1);
+		return -1;
 	}
 	
 	int sockfd;
