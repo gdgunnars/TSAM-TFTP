@@ -27,6 +27,30 @@ ssize_t get_message(int sockfd, char* message, size_t size,
     return n;
 }
 
+void get_filename_and__mode(char* message, char* filename, char* mode)
+{
+    int c = 0;
+    size_t i;
+    for (i = 2; i < 516; i++, c++) {
+        filename[c] = (char) message[i];
+
+        if (message[i] == '\0') {
+            i++;
+            break;
+        }
+   }
+
+   c = 0;
+   for (size_t j = i; j < 516; j++, c++) {
+       mode[c] = (char) message[j];
+
+       if (message[j] == '\0') {
+	   break;
+       }
+   }
+}
+
+
 int main(int argc, char **argv)
 {	
 	struct stat s;
@@ -78,14 +102,14 @@ int main(int argc, char **argv)
 	}
 	printf("Listening on port %d...\n", port);
 
-    for (;;) {
-	printf("\nWaiting for request...\n");
-	//char buffer[516];
-	//size_t op_code_length = 2;
+	for (;;) {
+	  printf("\nWaiting for request...\n");
+	  //char buffer[516];
+	  //size_t op_code_length = 2;
 
-    // Receive up to one byte less than declared, because it will
-    // be NUL-terminated later.
-    socklen_t len = (socklen_t) sizeof(client);
+	  // Receive up to one byte less than declared, because it will
+	  // be NUL-terminated later.
+	socklen_t len = (socklen_t) sizeof(client);
 	size_t size = sizeof(message);
 	ssize_t n = get_message(sockfd, message ,size, &client, &len);
 
@@ -100,27 +124,9 @@ int main(int argc, char **argv)
         
 		char filename[512];
 		char mode[512];
-		int c = 0;
-		size_t i;
-
-		for (i = 2; i < sizeof(filename); i++, c++) {
-			filename[c] = (char) message[i];
-			
-			if (message[i] == '\0') {
-				i++;
-				break;
-			}
-		}
 		
-		c = 0;
-		for (size_t j = i; j < sizeof(mode); j++, c++) {
-			mode[c] = (char) message[j];
-			
-			if (message[j] == '\0') {
-				break;
-			}
-		}
-		
+		get_filename_and__mode(message, filename, mode);
+		      		
 		fprintf(stdout, "Filename: %s\n", filename);
 		fprintf(stdout, "Mode: %s\n", mode);
 		fflush(stdout);
