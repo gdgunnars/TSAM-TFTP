@@ -15,10 +15,10 @@
 
 enum OP_CODE { RRQ = 1, DATA = 3, ERROR = 5 };
 
-ssize_t get_message(int sockfd, char* message, 
+ssize_t get_message(int sockfd, char* message, size_t size, 
                     struct sockaddr_in* client, socklen_t* len) {
 
-    ssize_t n = recvfrom(sockfd, message, sizeof(*message), 0, 
+    ssize_t n = recvfrom(sockfd, message, size, 0, 
                         (struct sockaddr *) &client, len);
     if (n < 0) {
         fprintf(stderr, "Error! %s\n", strerror(errno));
@@ -88,8 +88,8 @@ int main(int argc, char **argv)
         // Receive up to one byte less than declared, because it will
         // be NUL-terminated later.
         socklen_t len = (socklen_t) sizeof(client);
-
-	ssize_t n = get_message(sockfd, message, &client, &len);
+	size_t size = sizeof(message);
+	ssize_t n = get_message(sockfd, message ,size, &client, &len);
 
         printf("bytes recieved: %zd\n", n);
 	printf("first 2 bytes: %c%c\n", message[0], message[1]);
