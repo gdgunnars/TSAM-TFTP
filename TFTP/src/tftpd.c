@@ -91,22 +91,38 @@ int main(int argc, char **argv)
 
 	if (n >= 0) {
 	    uint16_t opcode = message[1];
+		message[n] = '\0';
+		fprintf(stdout, "Message: %s\n", message);
 		
         fprintf(stdout, "Received request!\n");
 		fprintf(stdout, "Number of bytes recieved: %zd\n", n);
 	    fprintf(stdout, "Opcode: %d\n", opcode);
         
 		char filename[512];
+		char mode[512];
+		int c = 0;
+		size_t i;
 
-		for (size_t i = 2; i < sizeof(filename); i++) {
-			filename[i] = (char) message[i];
+		for (i = 2; i < sizeof(filename); i++, c++) {
+			filename[c] = (char) message[i];
+			
 			if (message[i] == '\0') {
+				i++;
 				break;
 			}
 		}
-
-		fprintf(stderr, "Filename: %s\n", message);
-
+		
+		c = 0;
+		for (size_t j = i; j < sizeof(mode); j++, c++) {
+			mode[c] = (char) message[j];
+			
+			if (message[j] == '\0') {
+				break;
+			}
+		}
+		
+		fprintf(stdout, "Filename: %s\n", filename);
+		fprintf(stdout, "Mode: %s\n", mode);
 		fflush(stdout);
 
 
