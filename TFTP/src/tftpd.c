@@ -13,8 +13,10 @@
 // argv[1] = port number
 // argv[2] = directory to serve
 
+enum OP_CODE { RRQ = 1, DATA = 3, ERROR = 5 };
+
 int main(int argc, char **argv)
-{
+{	
 	struct stat s;
 
 	// Check if number of arguments are correct
@@ -62,16 +64,27 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Error! %s\n", strerror(errno));
 		return -1;
 	}
+	printf("Listening on port %d...\n", port);
 
     for (;;) {
+	//char buffer[516];
+	//size_t op_code_length = 2;
+
+	printf("i'm at the top of the for loop.\n");
+
         // Receive up to one byte less than declared, because it will
         // be NUL-terminated later.
         socklen_t len = (socklen_t) sizeof(client);
-        ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
+        printf("len = %d\n", len);
+
+	ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
                              0, (struct sockaddr *) &client, &len);
-        if (n >= 0) {
+        printf("bytes recieved: %zd\n", n);
+	printf("first 2 bytes: %c%c\n", message[0], message[1]);
+
+	if (n >= 0) {
             message[n] = '\0';
-            fprintf(stdout, "Received:\n%s\n", message);
+            fprintf(stdout, "Received :\n%s\n", message);
             fflush(stdout);
 
             // convert message to upper case.
