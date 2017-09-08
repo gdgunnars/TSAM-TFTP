@@ -46,27 +46,27 @@ int main(int argc, char **argv)
 	}
 	
 	int sockfd;
-    	struct sockaddr_in server, client;
+    struct sockaddr_in server, client;
 	char message[512];
 	
 	// Get the port number from the command line
 	int port = atoi(argv[1]);
 
-    	// Create and bind a UDP socket
-    	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	// Create and bind a UDP socket
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
-    	// Receives should timeout after 30 seconds.
-    	struct timeval timeout;
-    	timeout.tv_sec = 30;
-    	timeout.tv_usec = 0;
+	// Receives should timeout after 30 seconds.
+	struct timeval timeout;
+	timeout.tv_sec = 30;
+	timeout.tv_usec = 0;
    	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    	// Network functions need arguments in network byte order instead
-    	// of host byte order. The macros htonl, htons convert the
-    	// values.
-    	memset(&server, 0, sizeof(server));
-    	server.sin_family = AF_INET;
-    	server.sin_addr.s_addr = htonl(INADDR_ANY);
+	// Network functions need arguments in network byte order instead
+	// of host byte order. The macros htonl, htons convert the
+	// values.
+	memset(&server, 0, sizeof(server));
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = htonl(INADDR_ANY);
 	server.sin_port = htons(port);
 
 	// On success, zero is returned.  On error, -1 is returned, and errno is
