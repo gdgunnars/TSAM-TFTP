@@ -138,14 +138,77 @@ int main(int argc, char **argv)
 			    fprintf(stderr, "Error! Filename outside base directory! \n");
 			    return -1;
 			}
-				
+			
+			
 			fprintf(stdout, "Filename: %s\n", filename);
 			fprintf(stdout, "Mode: %s\n", mode);
+					
+
+			FILE *fd;
+			char* read_mode = "r";
+			
+			if (strcmp(mode, "netascii") == 0) {
+			    read_mode = "r";
+			}
+			else if (strcmp(mode, "octet") == 0) {
+			    read_mode = "rb";
+			}
+			else {
+			    // TODO: Send Error packet here
+			    fprintf(stdout, "Incorrect Mode");
+			}
+			
+			
+			uint8_t buffer[512];
+			uint8_t packet[516];
+			fd = fopen(filename, read_mode);
+			
+			if (fd == NULL){
+			    fprintf(stderr, "Error! %s\n", strerror(errno));
+			    return -1;
+			}
+
+			int close = 0;
+			ssize_t bytes_read;
+			uint16_t block_number = 0;
+			while(!close){
+			    block_number++;
+			    buffer[0] = 0;
+			    printf("preparing packet %d \n", block_number);
+			    bytes_read = fread(buffer,sizeof(buffer),1,fd);
+			    if (bytes_read < 512) {
+				// Breaking out of while loop
+				printf("Last packet being sent!\n");
+				close = 1;
+			    }
+			    
+			    
+
+			    // --------- SEND DATA
+
+			    packet[0] = 0;
+			    packet[1] = 3;
+			    uint8_t b1 = block_number >> 8;
+			    uint8_t b2 = block_number;
+			    packet[2] = b1;
+			    packet[3] = b2;
+			    
+			    memcpy(packet + 4, buffer, sizeof(buffer));
+			    
+			    int num_sent = sendto(sockfd, &packet, 4+bytes_read, 0, (struct sockaddr *) &client, len);
+			    if (num_sent == -1) {
+				fprintf(stderr, "Error!sending packet  %s\n", strerror(errno));
+				return -1;
+			    }
+			    printf("sent this many things: %d \n", num_sent);
+			    // ----------
+			}			
+			
 			fflush(stdout);
 
 
-			sendto(sockfd, message, (size_t) n, 0,
-					   (struct sockaddr *) &client, len);
+			//sendto(sockfd, message, (size_t) n, 0,
+			//  (struct sockaddr *) &client, len);
 		} else {
 			// Error or timeout. Check errno == EAGAIN or
 			// errno == EWOULDBLOCK to check whether a timeout happened
