@@ -24,8 +24,6 @@ ssize_t get_message(int sockfd, char* message, size_t size,
         fprintf(stderr, "Error! %s\n", strerror(errno));
     }
 
-    printf("I read this many bytes: %zd\n", n);
-
     return n;
 }
 
@@ -81,32 +79,38 @@ int main(int argc, char **argv)
 	printf("Listening on port %d...\n", port);
 
     for (;;) {
-	printf("Waiting for request...\n");
+	printf("\nWaiting for request...\n");
 	//char buffer[516];
 	//size_t op_code_length = 2;
 
-        // Receive up to one byte less than declared, because it will
-        // be NUL-terminated later.
-        socklen_t len = (socklen_t) sizeof(client);
+    // Receive up to one byte less than declared, because it will
+    // be NUL-terminated later.
+    socklen_t len = (socklen_t) sizeof(client);
 	size_t size = sizeof(message);
 	ssize_t n = get_message(sockfd, message ,size, &client, &len);
 
-        printf("bytes recieved: %zd\n", n);
-	printf("first 2 bytes: %c%c\n", message[0], message[1]);
-
 	if (n >= 0) {
 	    uint16_t opcode = message[1];
-            //message[n] = '\0';
-            fprintf(stdout, "Received request!\n");
+		
+        fprintf(stdout, "Received request!\n");
+		fprintf(stdout, "Number of bytes recieved: %zd\n", n);
 	    fprintf(stdout, "Opcode: %d\n", opcode);
-            fflush(stdout);
+        
+		char filename[512];
 
-            // convert message to upper case.
-            for (int i = 0; i < n; ++i) {
-                message[i] = toupper(message[i]);
-            }
+		for (size_t i = 2; i < sizeof(filename); i++) {
+			filename[i] = (char) message[i];
+			if (message[i] == '\0') {
+				break;
+			}
+		}
 
-            sendto(sockfd, message, (size_t) n, 0,
+		fprintf(stderr, "Filename: %s\n", message);
+
+		fflush(stdout);
+
+
+        sendto(sockfd, message, (size_t) n, 0,
                    (struct sockaddr *) &client, len);
         } else {
             // Error or timeout. Check errno == EAGAIN or
