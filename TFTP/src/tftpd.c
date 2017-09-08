@@ -8,11 +8,12 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 // argv[0] =  program name
 // argv[1] = port number
 // argv[2] = directory to serve
-
+const size_t BUFFER_SIZE = 512;
 enum OP_CODE { RRQ = 1, DATA = 3, ERROR = 5 };
 
 ssize_t get_message(int sockfd, char* message, size_t size, 
@@ -31,7 +32,7 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
 {
     int c = 0;
     size_t i;
-    for (i = 2; i < 516; i++, c++) {
+    for (i = 2; i < BUFFER_SIZE; i++, c++) {
         filename[c] = (char) message[i];
 
         if (message[i] == '\0') {
@@ -41,7 +42,7 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
    }
 
    c = 0;
-   for (size_t j = i; j < 516; j++, c++) {
+   for (size_t j = i; j < BUFFER_SIZE; j++, c++) {
        mode[c] = (char) message[j];
 
        if (message[j] == '\0') {
@@ -54,7 +55,6 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
 int main(int argc, char **argv)
 {	
 	struct stat s;
-
 	// Check if number of arguments are correct
 	if(argc != 3) {
 		fprintf(stderr, "Usage: %s <port> <directory>\n", argv[0]);
@@ -67,6 +67,14 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	
+	char *base_directory = argv[2];	
+	
+	// Change working directory to base directory
+	if (chdir(base_directory) < 0) {
+		fprintf(stderr, "Error! %s\n", strerror(errno));
+		return -1;
+	}
+
 	int sockfd;
     struct sockaddr_in server, client;
 	char message[512];
@@ -103,42 +111,40 @@ int main(int argc, char **argv)
 	printf("Listening on port %d...\n", port);
 
 	for (;;) {
-	  printf("\nWaiting for request...\n");
-	  //char buffer[516];
-	  //size_t op_code_length = 2;
+		printf("\n--------------------------\n");
+		printf("| Waiting for request... | \n");
+		printf("--------------------------\n\n");
 
-	  // Receive up to one byte less than declared, because it will
-	  // be NUL-terminated later.
-	socklen_t len = (socklen_t) sizeof(client);
-	size_t size = sizeof(message);
-	ssize_t n = get_message(sockfd, message ,size, &client, &len);
+		// Receive up to one byte less than declared, because it will
+		// be NUL-terminated later.
+		socklen_t len = (socklen_t) sizeof(client);
+		size_t size = sizeof(message);
+		ssize_t n = get_message(sockfd, message ,size, &client, &len);
 
-	if (n >= 0) {
-	    uint16_t opcode = message[1];
-		message[n] = '\0';
-		fprintf(stdout, "Message: %s\n", message);
-		
-        fprintf(stdout, "Received request!\n");
-		fprintf(stdout, "Number of bytes recieved: %zd\n", n);
-	    fprintf(stdout, "Opcode: %d\n", opcode);
-        
-		char filename[512];
-		char mode[512];
-		
-		get_filename_and__mode(message, filename, mode);
-		      		
-		fprintf(stdout, "Filename: %s\n", filename);
-		fprintf(stdout, "Mode: %s\n", mode);
-		fflush(stdout);
+		if (n >= 0) {
+			uint16_t opcode = message[1];
+			
+			fprintf(stdout, "Received request!\n");
+			fprintf(stdout, "Number of bytes recieved: %zd\n", n);
+			fprintf(stdout, "Opcode: %d\n", opcode);
+			
+			char filename[512];
+			char mode[512];
+			
+			get_filename_and__mode(message, filename, mode);
+						
+			fprintf(stdout, "Filename: %s\n", filename);
+			fprintf(stdout, "Mode: %s\n", mode);
+			fflush(stdout);
 
 
-        sendto(sockfd, message, (size_t) n, 0,
-                   (struct sockaddr *) &client, len);
-        } else {
-            // Error or timeout. Check errno == EAGAIN or
-            // errno == EWOULDBLOCK to check whether a timeout happened
-        }
-    }
+			sendto(sockfd, message, (size_t) n, 0,
+					   (struct sockaddr *) &client, len);
+		} else {
+			// Error or timeout. Check errno == EAGAIN or
+			// errno == EWOULDBLOCK to check whether a timeout happened
+		}
+	}
 	return 0;
 }
 
