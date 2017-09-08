@@ -15,6 +15,20 @@
 
 enum OP_CODE { RRQ = 1, DATA = 3, ERROR = 5 };
 
+ssize_t get_message(int sockfd, char* message, 
+                    struct sockaddr_in* client, socklen_t* len) {
+
+    ssize_t n = recvfrom(sockfd, message, sizeof(*message), 0, 
+                        (struct sockaddr *) &client, len);
+    if (n < 0) {
+        fprintf(stderr, "Error! %s\n", strerror(errno));
+    }
+
+    printf("I read this many bytes: %zd\n", n);
+
+    return n;
+}
+
 int main(int argc, char **argv)
 {	
 	struct stat s;
@@ -67,24 +81,24 @@ int main(int argc, char **argv)
 	printf("Listening on port %d...\n", port);
 
     for (;;) {
+	printf("Waiting for request...\n");
 	//char buffer[516];
 	//size_t op_code_length = 2;
-
-	printf("i'm at the top of the for loop.\n");
 
         // Receive up to one byte less than declared, because it will
         // be NUL-terminated later.
         socklen_t len = (socklen_t) sizeof(client);
-        printf("len = %d\n", len);
 
-	ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
-                             0, (struct sockaddr *) &client, &len);
+	ssize_t n = get_message(sockfd, message, &client, &len);
+
         printf("bytes recieved: %zd\n", n);
 	printf("first 2 bytes: %c%c\n", message[0], message[1]);
 
 	if (n >= 0) {
-            message[n] = '\0';
-            fprintf(stdout, "Received :\n%s\n", message);
+	    uint16_t opcode = message[1];
+            //message[n] = '\0';
+            fprintf(stdout, "Received request!\n");
+	    fprintf(stdout, "Opcode: %d\n", opcode);
             fflush(stdout);
 
             // convert message to upper case.
@@ -101,3 +115,4 @@ int main(int argc, char **argv)
     }
 	return 0;
 }
+
