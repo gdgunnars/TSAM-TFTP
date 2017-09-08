@@ -132,7 +132,13 @@ int main(int argc, char **argv)
 			char mode[512];
 			
 			get_filename_and__mode(message, filename, mode);
-						
+		        
+			if (strstr(filename, "../") != NULL || strcmp(&filename[0], "/") == 0) {
+			    // TODO: Send error packet motehrfuckers! And maybe set errno?
+			    fprintf(stderr, "Error! Filename outside base directory! \n");
+			    return -1;
+			}
+				
 			fprintf(stdout, "Filename: %s\n", filename);
 			fprintf(stdout, "Mode: %s\n", mode);
 			fflush(stdout);
