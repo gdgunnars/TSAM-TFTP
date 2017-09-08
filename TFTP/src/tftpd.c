@@ -32,27 +32,27 @@ int main(int argc, char **argv)
 	}
 	
 	int sockfd;
-    	struct sockaddr_in server, client;
+    struct sockaddr_in server, client;
 	char message[512];
 	
 	// Get the port number from the command line
 	int port = atoi(argv[1]);
 
-    	// Create and bind a UDP socket
-    	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	// Create and bind a UDP socket
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
-    	// Receives should timeout after 30 seconds.
-    	struct timeval timeout;
-    	timeout.tv_sec = 30;
-    	timeout.tv_usec = 0;
+	// Receives should timeout after 30 seconds.
+	struct timeval timeout;
+	timeout.tv_sec = 30;
+	timeout.tv_usec = 0;
    	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    	// Network functions need arguments in network byte order instead
-    	// of host byte order. The macros htonl, htons convert the
-    	// values.
-    	memset(&server, 0, sizeof(server));
-    	server.sin_family = AF_INET;
-    	server.sin_addr.s_addr = htonl(INADDR_ANY);
+	// Network functions need arguments in network byte order instead
+	// of host byte order. The macros htonl, htons convert the
+	// values.
+	memset(&server, 0, sizeof(server));
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = htonl(INADDR_ANY);
 	server.sin_port = htons(port);
 
 	// On success, zero is returned.  On error, -1 is returned, and errno is
@@ -67,22 +67,22 @@ int main(int argc, char **argv)
 	printf("Listening on port %d...\n", port);
 
     for (;;) {
-	//char buffer[516];
-	//size_t op_code_length = 2;
+		//char buffer[516];
+		//size_t op_code_length = 2;
 
-	printf("i'm at the top of the for loop.\n");
+		printf("i'm at the top of the for loop.\n");
 
-        // Receive up to one byte less than declared, because it will
-        // be NUL-terminated later.
-        socklen_t len = (socklen_t) sizeof(client);
-        printf("len = %d\n", len);
+		// Receive up to one byte less than declared, because it will
+		// be NUL-terminated later.
+		socklen_t len = (socklen_t) sizeof(client);
+		printf("len = %d\n", len);
 
-	ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
-                             0, (struct sockaddr *) &client, &len);
-        printf("bytes recieved: %zd\n", n);
-	printf("first 2 bytes: %c%c\n", message[0], message[1]);
+		ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
+								0, (struct sockaddr *) &client, &len);
+		printf("bytes recieved: %zd\n", n);
+		printf("first 2 bytes: %c%c\n", message[0], message[1]);
 
-	if (n >= 0) {
+		if (n >= 0) {
             message[n] = '\0';
             fprintf(stdout, "Received :\n%s\n", message);
             fflush(stdout);
