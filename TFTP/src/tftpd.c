@@ -31,6 +31,7 @@ unsigned short rec_block_number;
 int sockfd;
 struct sockaddr_in server, client;
 int last_packet = 0;
+int transaction_done = 0;
 short opcode;
 
 char* read_mode = "r";
@@ -38,14 +39,21 @@ char* read_mode = "r";
 char filename[512];
 char mode[512];
 char message[512];
+char packet[516];
+
+char error_msg[512];
+
+int bytes_read = 0;
+
+unsigned short current_client_port = 0;
 
 
 void send_data_packet() {
 	char buffer[BUFFER_SIZE];
-	char packet[BUFFER_SIZE+4];
-
+	
+	bytes_read = 0;
 	printf("Preparing packet number: %d \n",(int) block_number);
-	int bytes_read = fread(buffer, 1, BUFFER_SIZE, fd);
+	bytes_read = fread(buffer, 1, BUFFER_SIZE, fd);
 
 	if (bytes_read < 0) {
 		// something bad happened
@@ -106,6 +114,7 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
         }
     }
 
+	// TODO: convert mode to lowercase
     c = 0;
     for (int j = i; j < BUFFER_SIZE; j++, c++) {
 		mode[c] = (char) message[j];
@@ -126,8 +135,7 @@ void read_request() {
 	
 	// Check if file is outside directory
 	if (strstr(filename, "../") != NULL || strcmp(&filename[0], "/") == 0) {
-		// TODO: Send error packet motehrfuckers! And maybe set errno?
-		fprintf(stderr, "Error! Filename outside base directory! \n");
+		send_error_packet(2, "Access violation.");
 		return;
 	}
 	
@@ -154,6 +162,32 @@ void read_request() {
 
 	block_number = 1;
 	send_data_packet();
+}
+
+void send_error_packet(int error_code, char* msg) {
+	fprintf(stdout, "Sending error packet\nError Code: %d\nError Message: %s\n",
+					error_code, msg);
+	char error_packet[strlen(msg)+5];
+	// fill packet with zeros
+	memset(error_packet, 0, sizeof(error_packet));
+
+	// Opcode
+	error_packet[0] = 0;
+	error_packet[1] = 5;
+	// Block Number
+	error_packet[2] = 0;
+	error_packet[3] = error_code;
+	// Error message
+	size_t i;
+	for (i = 0; i < strlen(msg); i++) {
+		error_packet[i+4] = msg[i];
+	}
+	error_packet[i+4] = '\0';
+
+	int num_sent = sendto(sockfd, error_packet, (size_t)strlen(msg) + (size_t)5, 0, 
+						(struct sockaddr *) &client, (socklen_t) sizeof(client));
+
+	printf("Number of bytes sent: %d \n", num_sent);
 }
 
 int main(int argc, char **argv)
@@ -220,8 +254,21 @@ int main(int argc, char **argv)
 		socklen_t len = (socklen_t) sizeof(client);
 		ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
 					0, (struct sockaddr *) &client, &len);
-		if (n < 0) {
+		
+		// 
+		if (current_client_port == 0 || (current_client_port != client.sin_port && transaction_done)) {
+			current_client_port = client.sin_port;
+		}
+
+		if (current_client_port != client.sin_port && !transaction_done) {
+			send_error_packet(5, "Unknown transfer ID.");
+			continue;
+		}
+
+		// Check if there was an error getting the message from the client.
+		if (n <= 0) {
 			fprintf(stderr, "Error! %s\n", strerror(errno));
+			continue;
 		}
 
 		// we got a message
@@ -245,12 +292,20 @@ int main(int argc, char **argv)
 					rec_block_number = ((((unsigned char*)message)[2] << 8) + ((unsigned char*)message)[3]);
 					fprintf(stdout, "I got an acknowledgement for block number: %d\n", rec_block_number);
 
-					if (block_number == rec_block_number && !last_packet) {
-						block_number++;
-						send_data_packet();
+					if (block_number == rec_block_number) {
+						if (!last_packet) {
+							block_number++;
+							send_data_packet();
+						}
+						else {
+							transaction_done = 1;
+						}
+					}
+					else if (rec_block_number == block_number-1) {
+						resend_last_data_packet();
 					}
 					else {
-						resend_last_data_packet();
+						// TODO: got some unexpected block number
 					}
 					break;
 				case ERROR:
@@ -258,9 +313,14 @@ int main(int argc, char **argv)
 					break;
 			}
 		} else {
-			fprintf(stdout, "Error when receiving message");
 			// Error or timeout. Check errno == EAGAIN or
 			// errno == EWOULDBLOCK to check whether a timeout happened
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				end_error_packet(0, strerror(errno));
+			}
+			else {
+				send_error_packet(0, "Unknown error occurred.");
+			}
 		}
 	}
     return 0;
