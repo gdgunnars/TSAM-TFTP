@@ -1,1 +1,50 @@
-Update this.
+A simple TFTP server written in the programming language c.
+
+/***********************************************************\
+|           Guðjón Steinar Sverrisson (gudjonss12@ru.is)    |
+|           Gunnar Davíð Gunnarsson (gunnarg15@ru.is)       |
+|           Hlynur Stefánsson (hlynurs15@ru.is)             |
+\***********************************************************/
+
+Questions:
+    1. The RRQ and WRQ have a mode string. Carefully explain and document the meaning
+    of the mode. Explain how you handle modes in your implementation and carefully
+    justify your decision.
+
+    The available modes are "netascii" and "octect", in any combination of upper and 
+    lower case characters. 
+    Netascii: 
+        Netascii is a modified form of ASCII, defined in RFC 764.
+        This is an 8-bit version of ascii. 
+    Octet:
+        Octet allows for the transfer of arbitrary raw 8-bit bytes.
+    Mail:
+        Netascii characters sent to a user rather than a file.
+        This mode is obsolete, and is not implemented and should not be used.
+
+    We handle these modes by first converting the string to lowercase and then checking
+    it against "netascii" and/or "octet.
+
+    If the mode is found to be netascii, we read the file with fopen(file, "r"), where the r 
+    means we are reading the file as a text file. If the client requests netascii, then the client is 
+    requesting a text file so we can simply read the file as a text file, and transmit it to the client in
+    that format. 
+
+    If however the mode is octet, we read the file with fopen(file, "rb"), where the rb means 
+    we are reading the file as a binary file. The mode octet means that the client wants to download 
+    a binary file, we need to read it as a binary so that it can be transmitted to the client in 
+    the correct requested format.
+
+    2. Explain how your server handles attempts of uploading files.
+    If we get a WRQ we send the client an error packet with error code 2, and the message is 
+    "Access violation.".
+    Then we wait for the next packet.
+
+    If we get a DATA packet from the client we send an error packet with error code 4, and the message is
+    "Illegal TFTP operation.". 
+
+
+
+
+
+ 
