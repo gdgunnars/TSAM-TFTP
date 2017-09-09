@@ -160,7 +160,7 @@ int main(int argc, char **argv)
 			
 			
 			uint8_t buffer[512];
-			uint8_t packet[516];
+			char packet[516];
 			fd = fopen(filename, read_mode);
 			
 			if (fd == NULL){
@@ -173,35 +173,71 @@ int main(int argc, char **argv)
 			uint16_t block_number = 0;
 			while(!close){
 			    block_number++;
-			    buffer[0] = 0;
-			    printf("preparing packet %d \n", block_number);
-			    bytes_read = fread(buffer,sizeof(buffer),1,fd);
-			    if (bytes_read < 512) {
-				// Breaking out of while loop
-				printf("Last packet being sent!\n");
-				close = 1;
+
+			    printf("Preparing packet number: %d \n", block_number);
+			    bytes_read = fread(buffer, 1, 512, fd);
+
+				printf("Bytes read: %zd\n", bytes_read);
+ 			/*	
+				printf("\nContents of buffer:\n");
+				for (size_t k = 0; k < sizeof(buffer); k++) {
+					printf("%c", (char) buffer[k]);
+				}
+			*/	
+
+				if (bytes_read < 512) {
+					// Breaking out of while loop
+					printf("Last packet being sent!\n");
+					close = 1;
 			    }
+			    fflush(stdout);
 			    
-			    
+				uint16_t opcode = 3;
 
 			    // --------- SEND DATA
 
-			    packet[0] = 0;
-			    packet[1] = 3;
-			    uint8_t b1 = block_number >> 8;
-			    uint8_t b2 = block_number;
-			    packet[2] = b1;
-			    packet[3] = b2;
+			    // fill reply with zeros
+				memset(packet, 0, sizeof(packet));	
 			    
-			    memcpy(packet + 4, buffer, sizeof(buffer));
+				// Opcode
+				packet[0] = (3 >> 8) & 0xff;
+			    packet[1] = 3 & 0xff;
+			    // Block code
+			    packet[2] = (block_number >> 8) & 0xff;
+			    packet[3] = block_number & 0xff;
 			    
-			    int num_sent = sendto(sockfd, &packet, 4+bytes_read, 0, (struct sockaddr *) &client, len);
+				for (int k = 0; k < bytes_read; k++) {
+					packet[k+4] = buffer[k];
+					printf("%c", (char)buffer[k]);
+				}
+					
+				/*
+				printf("Opcode:\n");
+				printf("%d - %d\n", (int)packet[0], (int)packet[1]);
+				printf("Block code:\n");
+				printf("%d - %d\n", (int)packet[2], (int)packet[3]);
+				*/
+
+				/*
+				printf("\nContents of packet:\n");
+				for (size_t k = 0; k < sizeof(packet); k++) {
+					printf("%c", packet[k]);
+				}
+				printf("\n\n");
+				*/
+
+			/*					
+			    int num_sent = sendto(sockfd, packet, 4+bytes_read, 0, 
+									(struct sockaddr *) &client, (socklen_t) sizeof(client));
+
 			    if (num_sent == -1) {
-				fprintf(stderr, "Error!sending packet  %s\n", strerror(errno));
-				return -1;
+					fprintf(stderr, "Error sending packet: %s\n", strerror(errno));
+					return -1;
 			    }
+
 			    printf("sent this many things: %d \n", num_sent);
 			    // ----------
+			  */  
 			}			
 			
 			fflush(stdout);
