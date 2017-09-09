@@ -1,3 +1,27 @@
+/* $Id: tftpd.c,v 1.0 2017/09/09 20:17:00 hpa Exp $ */
+/* ----------------------------------------------------------------------- *
+ *   
+ *   Copyright 2017 
+ *		Guðjón Steinar Sverrisson
+ *		Gunnar Davíð Gunnarsson
+ *		Hlynur Stefánsson
+  * - All Rights Reserved
+ *
+ *   This program is free software available under the same license
+ *   as the "OpenBSD" operating system, distributed at
+ *   http://www.openbsd.org/.
+ *
+ * ----------------------------------------------------------------------- */
+
+/*
+ * tftpd.c
+ *
+ * Simple TFTP server that only accepts RRQ (Reading files) but not 
+ * WRQ (writing files).
+ *
+ */
+
+
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -323,9 +347,11 @@ int main(int argc, char **argv)
 					break;
 				case WRQ:
 					fprintf(stdout, "Write requests are not allowed!");
+					send_error_packet(2, "Access violation.");
 					break;
 				case DATA:
 					fprintf(stdout, "Data upload not allowed!");
+					send_error_packet(4, "Illegal TFTP operation.");
 					break;
 				case ACK:
 					rec_block_number = ((((unsigned char*)message)[2] << 8) + ((unsigned char*)message)[3]);
