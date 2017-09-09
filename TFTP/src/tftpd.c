@@ -195,8 +195,21 @@ int main(int argc, char **argv)
 			switch(opcode) {
 				case RRQ:
 					block_number = 1;
-					
-					fd = fopen(filename, "r");
+					// check if we read with mode "r" or "rb"
+
+ 					char* read_mode = "r";
+ 					if (strcmp(mode, "netascii") == 0) {
+ 						read_mode = "r";
+ 					}
+ 					else if (strcmp(mode, "octet") == 0) {
+ 						read_mode = "rb";
+ 					}
+ 					else {
+ 						// TODO: Send Error packet here
+ 						fprintf(stdout, "Incorrect Mode");
+ 					}
+ 					
+					fd = fopen(filename, read_mode);
 						
 					if (fd == NULL){
 						fprintf(stderr, "Error! %s\n", strerror(errno));
