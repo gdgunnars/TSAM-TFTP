@@ -78,15 +78,19 @@ void send_data_packet() {
 		packet[k+4] = buffer[k];
 	}
 
-	fprintf(stdout, "\nSending packet nr: %d\n",(int) block_number); 
-	printf("\nOpcode: |%d|%d|", (int)packet[0], (int)packet[1]);
-	printf("Block code: |%d|%d|\n\n", (int)packet[2], (int)packet[3]);
-	
+	fprintf(stdout, "\nSending packet nr: %d\n",(int) block_number);
 
 	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
 				(struct sockaddr *) &client, (socklen_t) sizeof(client));
 
-	printf("sent this many things: %d \n", num_sent);
+	printf("Number of bytes sent: %d \n", num_sent);
+}
+
+void resend_last_data_packet() {
+	printf("Resending packet number: %d \n",(int) block_number);
+	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
+				(struct sockaddr *) &client, (socklen_t) sizeof(client));
+	printf("Number of bytes sent: %d \n", num_sent);
 }
 
 void get_filename_and__mode(char* message, char* filename, char* mode)
@@ -127,7 +131,8 @@ void read_request() {
 		return;
 	}
 	
-	// check if we read with mode "r" or "rb"
+	// "r" reads a text file, used with netascii mode
+	// "rb" reads a binary file, used with octed mode
 	if (strcmp(mode, "netascii") == 0) {
 		read_mode = "r";
 	}
@@ -218,12 +223,14 @@ int main(int argc, char **argv)
 		if (n < 0) {
 			fprintf(stderr, "Error! %s\n", strerror(errno));
 		}
+
 		// we got a message
 		if (n >= 0) {
 			// Get opcode
 			opcode = message[1];
 			fprintf(stdout, "Opcode: %d\n", opcode);
 			
+			// Check the opcode
 			switch(opcode) {
 				case RRQ:
 					read_request();
@@ -235,9 +242,6 @@ int main(int argc, char **argv)
 					fprintf(stdout, "Data upload not allowed!");
 					break;
 				case ACK:
-					// TODO: implement
-					printf("Mode is: %s \n", mode);
-					printf("\nBlocknumber recieved: |%d|%d|\n", (int)message[2], (int)message[3]);
 					rec_block_number = ((((unsigned char*)message)[2] << 8) + ((unsigned char*)message)[3]);
 					fprintf(stdout, "I got an acknowledgement for block number: %d\n", rec_block_number);
 
@@ -246,10 +250,8 @@ int main(int argc, char **argv)
 						send_data_packet();
 					}
 					else {
-						// TODO: send last packet again.
+						resend_last_data_packet();
 					}
-					
-
 					break;
 				case ERROR:
 					fprintf(stdout, "I got sent an error message!");
