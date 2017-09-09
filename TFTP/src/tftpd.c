@@ -235,7 +235,7 @@ int main(int argc, char **argv)
 				case ACK:
 					// TODO: implement
 					printf("\nBlocknumber recieved: |%d|%d|\n", (int)message[2], (int)message[3]);
-					rec_block_number = ((message[2] << 8) ^ message[3]) & 0xff;
+					rec_block_number = (((unsigned char*)message)[2] << 8) ^ ((unsigned char*)message)[3];
 					fprintf(stdout, "I got an acknowledgement for block number: %u\n", rec_block_number);
 
 					if (block_number == rec_block_number && !last_packet) {
