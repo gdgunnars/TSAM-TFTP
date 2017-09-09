@@ -189,8 +189,12 @@ int main(int argc, char **argv)
 		// be NUL-terminated later.
 		socklen_t len = (socklen_t) sizeof(client);
 		size_t size = sizeof(message);
-		ssize_t n = get_message(sockfd, message ,size, &client, &len);
-
+		//ssize_t n = get_message(sockfd, message ,size, &client, &len);
+		ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
+					0, (struct sockaddr *) &client, &len);
+		if (n < 0) {
+			fprintf(stderr, "Error! %s\n", strerror(errno));
+		}
 		// we got a message
 		if (n >= 0) {
 			// Get opcode, filename and mode
