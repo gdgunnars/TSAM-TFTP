@@ -30,14 +30,21 @@ unsigned short block_number;
 int sockfd;
 struct sockaddr_in server, client;
 int last_packet = 0;
+short opcode;
+
+char* read_mode = "r";
+
+char filename[512];
+char mode[512];
+char message[512];
 
 
 void send_data_packet() {
-	fd = fopen(filename, "r");
+	fd = fopen(filename, read_mode);
 		
 	if (fd == NULL){
 		fprintf(stderr, "Error! %s\n", strerror(errno));
-		return -1;
+		return;
 	}
 
 	char buffer[BUFFER_SIZE];
@@ -109,6 +116,39 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
     }
 }
 
+void read_request() {
+	fprintf(stdout, "Received Read Request!\n");
+	
+	get_filename_and__mode(message, filename, mode);
+	
+	fprintf(stdout, "Opcode: %d\n", opcode);
+	fprintf(stdout, "Filename: %s\n", filename);
+	fprintf(stdout, "Mode: %s\n", mode);
+	
+	// Check if file is outside directory
+	if (strstr(filename, "../") != NULL || strcmp(&filename[0], "/") == 0) {
+		// TODO: Send error packet motehrfuckers! And maybe set errno?
+		fprintf(stderr, "Error! Filename outside base directory! \n");
+		return;
+	}
+	
+	block_number = 1;
+
+	// check if we read with mode "r" or "rb"
+	if (strcmp(mode, "netascii") == 0) {
+		read_mode = "r";
+	}
+	else if (strcmp(mode, "octet") == 0) {
+		read_mode = "rb";
+	}
+	else {
+		// TODO: Send Error packet here
+		fprintf(stdout, "Incorrect Mode");
+	}
+
+	send_data_packet();
+}
+
 int main(int argc, char **argv)
 {	
     struct stat s;
@@ -132,9 +172,6 @@ int main(int argc, char **argv)
 		return -1;
     }
 
-    
-    char message[512];
-	
     // Get the port number from the command line
     int port = atoi(argv[1]);
 
@@ -181,49 +218,12 @@ int main(int argc, char **argv)
 		}
 		// we got a message
 		if (n >= 0) {
-			// Get opcode, filename and mode
-			uint16_t opcode = message[1];
-			char filename[512];
-			char mode[512];
-			get_filename_and__mode(message, filename, mode);
-				
-			fprintf(stdout, "Received request!\n");
-			fprintf(stdout, "Opcode: %d\n", opcode);
-			fprintf(stdout, "Filename: %s\n", filename);
-			fprintf(stdout, "Mode: %s\n", mode);
+			// Get opcode
+			opcode = message[1];
 			
-			// Check if file is outside directory
-			if (strstr(filename, "../") != NULL || strcmp(&filename[0], "/") == 0) {
-				// TODO: Send error packet motehrfuckers! And maybe set errno?
-				fprintf(stderr, "Error! Filename outside base directory! \n");
-				return -1;
-			}
-
 			switch(opcode) {
 				case RRQ:
-					block_number = 1;
-					// check if we read with mode "r" or "rb"
-
- 					char* read_mode = "r";
- 					if (strcmp(mode, "netascii") == 0) {
- 						read_mode = "r";
- 					}
- 					else if (strcmp(mode, "octet") == 0) {
- 						read_mode = "rb";
- 					}
- 					else {
- 						// TODO: Send Error packet here
- 						fprintf(stdout, "Incorrect Mode");
- 					}
- 					
-					fd = fopen(filename, read_mode);
-						
-					if (fd == NULL){
-						fprintf(stderr, "Error! %s\n", strerror(errno));
-						return -1;
-					}
-
-					send_data_packet();
+					read_request();
 					break;
 				case WRQ:
 					fprintf(stdout, "Write requests are not allowed!");
