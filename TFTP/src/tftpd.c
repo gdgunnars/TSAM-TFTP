@@ -128,7 +128,7 @@ void send_data_packet() {
 	
 	bytes_read = 0;
 	printf("Preparing packet number: %d \n",(int) block_number);
-	bytes_read = fread(buffer, 1, BUFFER_SIZE, fd);
+	bytes_read  = fread(buffer, 1, BUFFER_SIZE, fd);
 
 	printf("Number of bytes read: %d\n", bytes_read);
 
@@ -309,6 +309,8 @@ int main(int argc, char **argv)
 		ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
 					0, (struct sockaddr *) &client, &len);
 		
+
+		/*
 		// Check if first client connecting or if a new client is connecting.
 		// Save their port number.
 		if (current_client_port == 0 || (current_client_port != client.sin_port && transaction_done)) {
@@ -320,6 +322,7 @@ int main(int argc, char **argv)
 			send_error_packet(5, "Unknown transfer ID.");
 			continue;
 		}
+		*/
 
 		// Check if there was an error getting the message from the client.
 		if (n <= 0) {
