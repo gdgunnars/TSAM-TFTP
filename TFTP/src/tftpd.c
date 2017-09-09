@@ -47,121 +47,25 @@ int bytes_read = 0;
 
 unsigned short current_client_port = 0;
 
-
-void send_data_packet() {
-	char buffer[BUFFER_SIZE];
+void clear_everything() {
+	fd = NULL;
+	block_number = 0;
+	rec_block_number = 0;
 	
+	last_packet = 0;
+	transaction_done = 0;
+	opcode = 0;
+	
+	read_mode = "r";
+	
+	memset(filename, 0, sizeof(filename));
+	memset(mode, 0, sizeof(mode));
+	memset(message, 0, sizeof(message));
+	memset(packet, 0, sizeof(packet));
+	memset(error_msg, 0, sizeof(error_msg));
+
 	bytes_read = 0;
-	printf("Preparing packet number: %d \n",(int) block_number);
-	bytes_read = fread(buffer, 1, BUFFER_SIZE, fd);
-
-	if (bytes_read < 0) {
-		// something bad happened
-		fprintf(stdout, "Error reading file!");
-		return;
-	}
-
-	printf("Number of bytes read: %d\n", bytes_read);
-
-	if (bytes_read < BUFFER_SIZE) {
-		// Breaking out of while loop
-		printf("Last packet being sent!\n");
-		last_packet = 1;
-		// close the file stream
-		fclose(fd);
-	}
-
-	// fill packet with zeros
-	memset(packet, 0, sizeof(packet));	
-			
-	// Opcode
-	packet[0] = 0 & 0xff;
-	packet[1] = 3 & 0xff;
-	// Block Number
-	packet[2] =(block_number >> 8) & 0xff;
-	packet[3] = block_number & 0xff;
-	
-
-	for (int k = 0; k < bytes_read; k++) {
-		packet[k+4] = buffer[k];
-	}
-
-	fprintf(stdout, "\nSending packet nr: %d\n",(int) block_number);
-
-	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
-				(struct sockaddr *) &client, (socklen_t) sizeof(client));
-
-	printf("Number of bytes sent: %d \n", num_sent);
-}
-
-void resend_last_data_packet() {
-	printf("Resending packet number: %d \n",(int) block_number);
-	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
-				(struct sockaddr *) &client, (socklen_t) sizeof(client));
-	printf("Number of bytes sent: %d \n", num_sent);
-}
-
-void get_filename_and__mode(char* message, char* filename, char* mode)
-{
-    int c = 0;
-	int i;
-    for (i = 2; i < BUFFER_SIZE; i++, c++) {
-        filename[c] = (char) message[i];
-
-        if (message[i] == '\0') {
-            i++;
-            break;
-        }
-    }
-
-	// TODO: convert mode to lowercase
-    c = 0;
-    for (int j = i; j < BUFFER_SIZE; j++, c++) {
-		mode[c] = (char) message[j];
-
-		if (message[j] == '\0') {
-			break;
-		}
-    }
-}
-
-void read_request() {
-	fprintf(stdout, "Received Read Request!\n");
-	
-	get_filename_and__mode(message, filename, mode);
-
-	fprintf(stdout, "Filename: %s\n", filename);
-	fprintf(stdout, "Mode: %s\n", mode);
-	
-	// Check if file is outside directory
-	if (strstr(filename, "../") != NULL || (&filename[0])[0] == '/') {
-		send_error_packet(2, "Access violation.");
-		return;
-	}
-	
-	// "r" reads a text file, used with netascii mode
-	// "rb" reads a binary file, used with octed mode
-	if (strcmp(mode, "netascii") == 0) {
-		read_mode = "r";
-	}
-	else if (strcmp(mode, "octet") == 0) {
-		read_mode = "rb";
-	}
-	else {
-		// TODO: Send Error packet here
-		fprintf(stdout, "Incorrect Mode");
-	}
-
-	fd = fopen(filename, "rb");
-	
-	if (fd == NULL){
-		fprintf(stderr, "Error! %s\n", strerror(errno));
-		return;
-	}
-
-
-	block_number = 1;
-	send_data_packet();
+	current_client_port = 0;
 }
 
 void send_error_packet(int error_code, char* msg) {
@@ -186,8 +90,134 @@ void send_error_packet(int error_code, char* msg) {
 
 	int num_sent = sendto(sockfd, error_packet, (size_t)strlen(msg) + (size_t)5, 0, 
 						(struct sockaddr *) &client, (socklen_t) sizeof(client));
+	if (num_sent < 0) {
+		fprintf(stderr, "Error! %s\n", strerror(errno));
+		clear_everything();
+	}
+	else {
+		printf("Number of bytes sent: %d \n", num_sent);
+	}
+}
 
+void send_data_packet() {
+	char buffer[BUFFER_SIZE];
+	
+	bytes_read = 0;
+	printf("Preparing packet number: %d \n",(int) block_number);
+	bytes_read = fread(buffer, 1, BUFFER_SIZE, fd);
+
+	printf("Number of bytes read: %d\n", bytes_read);
+
+	if (bytes_read < BUFFER_SIZE) {
+		// Breaking out of while loop
+		printf("Last packet being sent!\n");
+		last_packet = 1;
+		// close the file stream
+		fclose(fd);
+	}
+
+	// fill packet with zeros
+	memset(packet, 0, sizeof(packet));	
+			
+	// Opcode
+	packet[0] = 0 & 0xff;
+	packet[1] = 3 & 0xff;
+	// Block Number
+	packet[2] =(block_number >> 8) & 0xff;
+	packet[3] = block_number & 0xff;
+	
+	for (int k = 0; k < bytes_read; k++) {
+		packet[k+4] = buffer[k];
+	}
+
+	fprintf(stdout, "\nSending packet nr: %d\n",(int) block_number);
+
+	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
+				(struct sockaddr *) &client, (socklen_t) sizeof(client));
+
+	if (num_sent < 0) {
+		fprintf(stderr, "Error! %s\n", strerror(errno));
+		clear_everything();
+	}
+	else {
+		printf("Number of bytes sent: %d \n", num_sent);
+	}
+}
+
+void resend_last_data_packet() {
+	printf("Resending packet number: %d \n",(int) block_number);
+	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
+				(struct sockaddr *) &client, (socklen_t) sizeof(client));
 	printf("Number of bytes sent: %d \n", num_sent);
+}
+
+void get_filename_and__mode(char* message, char* filename, char* mode)
+{
+    int c = 0;
+	int i;
+    for (i = 2; i < BUFFER_SIZE; i++, c++) {
+        filename[c] = (char) message[i];
+
+        if (message[i] == '\0') {
+            i++;
+            break;
+        }
+    }
+
+    c = 0;
+    for (int j = i; j < BUFFER_SIZE; j++, c++) {
+		mode[c] = (char) message[j];
+
+		if (message[j] == '\0') {
+			break;
+		}
+	}
+	// convert mode to lowercase
+	for (i = 0; mode[i]; i++) {
+		mode[i] = tolower((unsigned char)mode[i]);
+	}
+}
+
+void read_request() {
+	fprintf(stdout, "Received Read Request!\n");
+	
+	get_filename_and__mode(message, filename, mode);
+
+	fprintf(stdout, "Filename: %s\n", filename);
+	fprintf(stdout, "Mode: %s\n", mode);
+	
+	// Check if file is outside directory
+	if (strstr(filename, "../") != NULL || (&filename[0])[0] == '/') {
+		send_error_packet(2, "Access violation.");
+		clear_everything();
+		return;
+	}
+	
+	// "r" reads a text file, used with netascii mode
+	// "rb" reads a binary file, used with octed mode
+	if (strcmp(mode, "netascii") == 0) {
+		read_mode = "r";
+	}
+	else if (strcmp(mode, "octet") == 0) {
+		read_mode = "rb";
+	}
+	// Else the mode is not recognized.
+	else {
+		send_error_packet(4, "Illegal TFTP operation.");
+		clear_everything();
+		return;
+	}
+
+	fd = fopen(filename, "rb");
+	
+	if (fd == NULL){
+		send_error_packet(0, strerror(errno));
+		clear_everything();
+		return;
+	}
+
+	block_number = 1;
+	send_data_packet();
 }
 
 int main(int argc, char **argv)
@@ -255,12 +285,14 @@ int main(int argc, char **argv)
 		ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
 					0, (struct sockaddr *) &client, &len);
 		
-		// 
+		// Check if first client connecting or if a new client is connecting.
+		// Save their port number.
 		if (current_client_port == 0 || (current_client_port != client.sin_port && transaction_done)) {
 			current_client_port = client.sin_port;
 		}
-
-		if (current_client_port != client.sin_port && !transaction_done) {
+		// Check if unknown TID is trying to connect while still transfering to another TID.
+		// In this case we want to keep the connection alive with the previous TID.
+		else if (current_client_port != client.sin_port && !transaction_done) {
 			send_error_packet(5, "Unknown transfer ID.");
 			continue;
 		}
@@ -268,6 +300,13 @@ int main(int argc, char **argv)
 		// Check if there was an error getting the message from the client.
 		if (n <= 0) {
 			fprintf(stderr, "Error! %s\n", strerror(errno));
+			clear_everything();
+			continue;
+		}
+		// Check if illegal message
+		else if(n < 4) {
+			send_error_packet(4, "Illegal TFTP operation.");
+			clear_everything();
 			continue;
 		}
 
@@ -290,22 +329,27 @@ int main(int argc, char **argv)
 					break;
 				case ACK:
 					rec_block_number = ((((unsigned char*)message)[2] << 8) + ((unsigned char*)message)[3]);
+					fprintf(stdout, "Last packet boolean is: %d\n", last_packet);
+					fprintf(stdout, "Current block number: %d\n", block_number);
 					fprintf(stdout, "I got an acknowledgement for block number: %d\n", rec_block_number);
 
 					if (block_number == rec_block_number) {
 						if (!last_packet) {
+							fprintf(stdout, "not the last packet!\n");
 							block_number++;
 							send_data_packet();
 						}
 						else {
+							fprintf(stdout, "Transaction is done!\n");
 							transaction_done = 1;
+							last_packet = 0;
 						}
 					}
 					else if (rec_block_number == block_number-1) {
 						resend_last_data_packet();
 					}
 					else {
-						// TODO: got some unexpected block number
+						fprintf(stdout, "Received an unexpected block number.");
 					}
 					break;
 				case ERROR:
@@ -316,11 +360,12 @@ int main(int argc, char **argv)
 			// Error or timeout. Check errno == EAGAIN or
 			// errno == EWOULDBLOCK to check whether a timeout happened
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-				end_error_packet(0, strerror(errno));
+				send_error_packet(0, strerror(errno));
 			}
 			else {
 				send_error_packet(0, "Unknown error occurred.");
 			}
+			clear_everything();
 		}
 	}
     return 0;
