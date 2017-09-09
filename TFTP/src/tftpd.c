@@ -120,8 +120,7 @@ void read_request() {
 	fprintf(stdout, "Received Read Request!\n");
 	
 	get_filename_and__mode(message, filename, mode);
-	
-	fprintf(stdout, "Opcode: %d\n", opcode);
+
 	fprintf(stdout, "Filename: %s\n", filename);
 	fprintf(stdout, "Mode: %s\n", mode);
 	
@@ -220,6 +219,7 @@ int main(int argc, char **argv)
 		if (n >= 0) {
 			// Get opcode
 			opcode = message[1];
+			fprintf(stdout, "Opcode: %d\n", opcode);
 			
 			switch(opcode) {
 				case RRQ:
