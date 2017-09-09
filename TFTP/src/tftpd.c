@@ -121,7 +121,7 @@ void read_request() {
 	fprintf(stdout, "Mode: %s\n", mode);
 	
 	// Check if file is outside directory
-	if (strstr(filename, "../") != NULL || strcmp(&filename[0], "/") == 0) {
+	if (strstr(filename, "../") != NULL || (&filename[0])[0] == '/') {
 		// TODO: Send error packet motehrfuckers! And maybe set errno?
 		fprintf(stderr, "Error! Filename outside base directory! \n");
 		return;
