@@ -69,10 +69,11 @@ void send_data_packet() {
 	// Opcode
 	packet[0] = 0 & 0xff;
 	packet[1] = 3 & 0xff;
-	// Block code
-	packet[2] = (block_number >> 8) & 0xff;
+	// Block Number
+	packet[2] =(block_number >> 8) & 0xff;
 	packet[3] = block_number & 0xff;
 	
+
 	for (int k = 0; k < bytes_read; k++) {
 		packet[k+4] = buffer[k];
 	}
@@ -80,6 +81,7 @@ void send_data_packet() {
 	fprintf(stdout, "\nSending packet nr: %d\n",(int) block_number); 
 	printf("\nOpcode: |%d|%d|", (int)packet[0], (int)packet[1]);
 	printf("Block code: |%d|%d|\n\n", (int)packet[2], (int)packet[3]);
+	
 
 	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
 				(struct sockaddr *) &client, (socklen_t) sizeof(client));
@@ -90,7 +92,7 @@ void send_data_packet() {
 void get_filename_and__mode(char* message, char* filename, char* mode)
 {
     int c = 0;
-    int i;
+	int i;
     for (i = 2; i < BUFFER_SIZE; i++, c++) {
         filename[c] = (char) message[i];
 
@@ -137,7 +139,7 @@ void read_request() {
 		fprintf(stdout, "Incorrect Mode");
 	}
 
-	fd = fopen(filename, read_mode);
+	fd = fopen(filename, "rb");
 	
 	if (fd == NULL){
 		fprintf(stderr, "Error! %s\n", strerror(errno));
@@ -234,9 +236,10 @@ int main(int argc, char **argv)
 					break;
 				case ACK:
 					// TODO: implement
+					printf("Mode is: %s \n", mode);
 					printf("\nBlocknumber recieved: |%d|%d|\n", (int)message[2], (int)message[3]);
-					rec_block_number = (((unsigned char*)message)[2] << 8) ^ ((unsigned char*)message)[3];
-					fprintf(stdout, "I got an acknowledgement for block number: %u\n", rec_block_number);
+					rec_block_number = ((((unsigned char*)message)[2] << 8) + ((unsigned char*)message)[3]);
+					fprintf(stdout, "I got an acknowledgement for block number: %d\n", rec_block_number);
 
 					if (block_number == rec_block_number && !last_packet) {
 						block_number++;
