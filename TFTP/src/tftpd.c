@@ -67,7 +67,6 @@ void send_data_packet() {
 	
 	for (int k = 0; k < bytes_read; k++) {
 		packet[k+4] = buffer[k];
-		//printf("%c", (char)packet[k+4]);
 	}
 
 	fprintf(stdout, "\nSending packet nr: %d\n",(int) block_number); 
@@ -76,27 +75,8 @@ void send_data_packet() {
 
 	int num_sent = sendto(sockfd, packet, (size_t) bytes_read + (size_t) 4, 0, 
 				(struct sockaddr *) &client, (socklen_t) sizeof(client));
-	/*		
-	if (num_sent == -1) {
-			
-		fprintf(stderr, "Error sending packet: %s\n", strerror(errno));
-		return;
-	}
-	*/
 
 	printf("sent this many things: %d \n", num_sent);
-}
-
-ssize_t get_message(int sockfd, char* message, size_t size, 
-                    struct sockaddr_in* client, socklen_t* len) {
-
-    ssize_t n = recvfrom(sockfd, message, size, 0, 
-			 (struct sockaddr *) &client, len);
-    if (n < 0) {
-        fprintf(stderr, "Error! %s\n", strerror(errno));
-    }
-
-    return n;
 }
 
 void get_filename_and__mode(char* message, char* filename, char* mode)
@@ -121,7 +101,6 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
 		}
     }
 }
-
 
 int main(int argc, char **argv)
 {	
@@ -188,8 +167,6 @@ int main(int argc, char **argv)
 		// Receive up to one byte less than declared, because it will
 		// be NUL-terminated later.
 		socklen_t len = (socklen_t) sizeof(client);
-		size_t size = sizeof(message);
-		//ssize_t n = get_message(sockfd, message ,size, &client, &len);
 		ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
 					0, (struct sockaddr *) &client, &len);
 		if (n < 0) {
@@ -218,22 +195,6 @@ int main(int argc, char **argv)
 			switch(opcode) {
 				case RRQ:
 					block_number = 1;
-
-					// check if we read with mode "r" or "rb"
-
-					/*
-					char* read_mode = "r";
-					if (strcmp(mode, "netascii") == 0) {
-						read_mode = "r";
-					}
-					else if (strcmp(mode, "octet") == 0) {
-						read_mode = "rb";
-					}
-					else {
-						// TODO: Send Error packet here
-						fprintf(stdout, "Incorrect Mode");
-					}
-					*/
 					
 					fd = fopen(filename, "r");
 						
@@ -258,8 +219,6 @@ int main(int argc, char **argv)
 					fprintf(stdout, "I got sent an error message!");
 					break;
 			}
-
-			
 		} else {
 			fprintf(stdout, "Error when receiving message");
 			// Error or timeout. Check errno == EAGAIN or
