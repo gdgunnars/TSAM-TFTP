@@ -26,6 +26,7 @@ const int BUFFER_SIZE = 512;
 
 FILE *fd;
 unsigned short block_number;
+unsigned short rec_block_number;
 
 int sockfd;
 struct sockaddr_in server, client;
@@ -40,13 +41,6 @@ char message[512];
 
 
 void send_data_packet() {
-	fd = fopen(filename, read_mode);
-		
-	if (fd == NULL){
-		fprintf(stderr, "Error! %s\n", strerror(errno));
-		return;
-	}
-
 	char buffer[BUFFER_SIZE];
 	char packet[BUFFER_SIZE+4];
 
@@ -131,8 +125,6 @@ void read_request() {
 		return;
 	}
 	
-	block_number = 1;
-
 	// check if we read with mode "r" or "rb"
 	if (strcmp(mode, "netascii") == 0) {
 		read_mode = "r";
@@ -145,6 +137,15 @@ void read_request() {
 		fprintf(stdout, "Incorrect Mode");
 	}
 
+	fd = fopen(filename, read_mode);
+	
+	if (fd == NULL){
+		fprintf(stderr, "Error! %s\n", strerror(errno));
+		return;
+	}
+
+
+	block_number = 1;
 	send_data_packet();
 }
 
@@ -233,7 +234,19 @@ int main(int argc, char **argv)
 					break;
 				case ACK:
 					// TODO: implement
-					fprintf(stdout, "I got an acknowledgement!");
+					printf("\nBlocknumber recieved: |%d|%d|\n", (int)message[2], (int)message[3]);
+					rec_block_number = ((message[2] << 8) ^ message[3]) & 0xff;
+					fprintf(stdout, "I got an acknowledgement for block number: %u\n", rec_block_number);
+
+					if (block_number == rec_block_number && !last_packet) {
+						block_number++;
+						send_data_packet();
+					}
+					else {
+						// TODO: send last packet again.
+					}
+					
+
 					break;
 				case ERROR:
 					fprintf(stdout, "I got sent an error message!");
