@@ -33,6 +33,13 @@ int last_packet = 0;
 
 
 void send_data_packet() {
+	fd = fopen(filename, "r");
+		
+	if (fd == NULL){
+		fprintf(stderr, "Error! %s\n", strerror(errno));
+		return -1;
+	}
+
 	char buffer[BUFFER_SIZE];
 	char packet[BUFFER_SIZE+4];
 
@@ -195,13 +202,6 @@ int main(int argc, char **argv)
 			switch(opcode) {
 				case RRQ:
 					block_number = 1;
-					
-					fd = fopen(filename, "r");
-						
-					if (fd == NULL){
-						fprintf(stderr, "Error! %s\n", strerror(errno));
-						return -1;
-					}
 
 					send_data_packet();
 					break;
