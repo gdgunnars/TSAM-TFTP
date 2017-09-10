@@ -203,11 +203,16 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
 }
 
 void read_request() {
-	fprintf(stdout, "Received Read Request!\n");
-	
 	get_filename_and__mode(message, filename, mode);
 
-	fprintf(stdout, "Filename: %s\n", filename);
+
+	printf("file \"%s\" requested from %d.%d.%d.%d:%d\n", filename,
+			client.sin_addr.s_addr&0xff,
+			(client.sin_addr.s_addr>>8)&0xff,
+			(client.sin_addr.s_addr>>16)&0xff,
+			(client.sin_addr.s_addr>>24)&0xff,
+			client.sin_port);
+	
 	fprintf(stdout, "Mode: %s\n", mode);
 	
 	// Check if file is outside directory
@@ -242,6 +247,29 @@ void read_request() {
 
 	block_number = 1;
 	send_data_packet();
+}
+
+void acknowledgement() {
+	rec_block_number = ((((unsigned char*)message)[2] << 8) + ((unsigned char*)message)[3]);
+	fprintf(stdout, "Received acknowledgement for block number: %d\n", rec_block_number);
+
+	if (block_number == rec_block_number) {
+		if (!last_packet) {
+			block_number++;
+			send_data_packet();
+		}
+		else {
+			fprintf(stdout, "Transaction is done!\n");
+			transaction_done = 1;
+			last_packet = 0;
+		}
+	}
+	else if (rec_block_number == block_number-1) {
+		resend_last_data_packet();
+	}
+	else {
+		fprintf(stdout, "Received an unexpected block number.");
+	}
 }
 
 int main(int argc, char **argv)
@@ -300,7 +328,7 @@ int main(int argc, char **argv)
 
     for (;;) {
 		printf("\n--------------------------\n");
-		printf("| Waiting for request... | \n");
+		printf("| Waiting for request... |\n");
 		printf("--------------------------\n\n");
 
 		// Receive up to one byte less than declared, because it will
@@ -357,29 +385,7 @@ int main(int argc, char **argv)
 					send_error_packet(4, "Illegal TFTP operation.");
 					break;
 				case ACK:
-					rec_block_number = ((((unsigned char*)message)[2] << 8) + ((unsigned char*)message)[3]);
-					fprintf(stdout, "Last packet boolean is: %d\n", last_packet);
-					fprintf(stdout, "Current block number: %d\n", block_number);
-					fprintf(stdout, "I got an acknowledgement for block number: %d\n", rec_block_number);
-
-					if (block_number == rec_block_number) {
-						if (!last_packet) {
-							fprintf(stdout, "not the last packet!\n");
-							block_number++;
-							send_data_packet();
-						}
-						else {
-							fprintf(stdout, "Transaction is done!\n");
-							transaction_done = 1;
-							last_packet = 0;
-						}
-					}
-					else if (rec_block_number == block_number-1) {
-						resend_last_data_packet();
-					}
-					else {
-						fprintf(stdout, "Received an unexpected block number.");
-					}
+					acknowledgement();
 					break;
 				case ERROR:
 					fprintf(stdout, "I got sent an error message!");
