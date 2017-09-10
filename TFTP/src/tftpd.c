@@ -206,7 +206,8 @@ void read_request() {
 	get_filename_and__mode(message, filename, mode);
 
 
-	printf("file \"%s\" requested from %d.%d.%d.%d:%d\n", filename,
+	printf("file \"%s\" requested from %d.%d.%d.%d:%d\n", 
+			filename,
 			client.sin_addr.s_addr&0xff,
 			(client.sin_addr.s_addr>>8)&0xff,
 			(client.sin_addr.s_addr>>16)&0xff,
