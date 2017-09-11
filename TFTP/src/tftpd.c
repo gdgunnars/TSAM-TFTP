@@ -27,6 +27,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -55,7 +56,7 @@ unsigned short rec_block_number;
 int sockfd;
 struct sockaddr_in server, client;
 int last_packet = 0;
-int transaction_done = 0;
+int transaction_done = 1;
 short opcode;
 
 char* read_mode = "r";
@@ -77,7 +78,7 @@ void clear_everything() {
 	rec_block_number = 0;
 	
 	last_packet = 0;
-	transaction_done = 0;
+	transaction_done = 1;
 	opcode = 0;
 	
 	read_mode = "r";
@@ -203,16 +204,14 @@ void get_filename_and__mode(char* message, char* filename, char* mode)
 }
 
 void read_request() {
+	transaction_done = 0;
 	get_filename_and__mode(message, filename, mode);
 
 
-	printf("file \"%s\" requested from %d.%d.%d.%d:%d\n", 
+	printf("file \"%s\" requested from %s:%d\n", 
 			filename,
-			client.sin_addr.s_addr&0xff,
-			(client.sin_addr.s_addr>>8)&0xff,
-			(client.sin_addr.s_addr>>16)&0xff,
-			(client.sin_addr.s_addr>>24)&0xff,
-			client.sin_port);
+			inet_ntoa(client.sin_addr),
+			ntohs(client.sin_port));
 	
 	fprintf(stdout, "Mode: %s\n", mode);
 	
@@ -337,21 +336,6 @@ int main(int argc, char **argv)
 		socklen_t len = (socklen_t) sizeof(client);
 		ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
 					0, (struct sockaddr *) &client, &len);
-		
-
-		/*
-		// Check if first client connecting or if a new client is connecting.
-		// Save their port number.
-		if (current_client_port == 0 || (current_client_port != client.sin_port && transaction_done)) {
-			current_client_port = client.sin_port;
-		}
-		// Check if unknown TID is trying to connect while still transfering to another TID.
-		// In this case we want to keep the connection alive with the previous TID.
-		else if (current_client_port != client.sin_port && !transaction_done) {
-			send_error_packet(5, "Unknown transfer ID.");
-			continue;
-		}
-		*/
 
 		// Check if there was an error getting the message from the client.
 		if (n <= 0) {
@@ -368,6 +352,22 @@ int main(int argc, char **argv)
 
 		// we got a message
 		if (n >= 0) {
+			printf("Current client port: %d\n", current_client_port);
+			printf("Connecting client port: %d\n", ntohs(client.sin_port));
+			printf("Is current transaction done?: %s\n", (transaction_done==1) ? "yes":"no");
+			// Check if first client connecting or if a new client is connecting.
+			// Save their port number.
+			if (current_client_port == 0 || (current_client_port != ntohs(client.sin_port) && transaction_done)) {
+				printf("\nSetting current client port number to: %d\n\n", ntohs(client.sin_port));
+				current_client_port = ntohs(client.sin_port);
+			}
+			// Check if unknown TID is trying to connect while still transfering to another TID.
+			// In this case we want to keep the connection alive with the previous TID.
+			else if (current_client_port != ntohs(client.sin_port) && !transaction_done) {
+				send_error_packet(5, "Unknown transfer ID.");
+				continue;
+			}
+
 			// Get opcode
 			opcode = message[1];
 			fprintf(stdout, "Opcode: %d\n", opcode);
